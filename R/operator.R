@@ -241,7 +241,7 @@ multi_assign <- function(x, value, env) {
   rhs <- value
 
   #
-  # all lists or environemnts referenced in lhs must already exist
+  # all lists or environments referenced in lhs must already exist
   #
   check_extract_calls(lhs, env)
 

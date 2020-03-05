@@ -3,17 +3,20 @@
 language: R
 sudo: false
 cache: packages
-warnings_are_errors: false
-
-r:
-  - 3.1
-  - 3.2
-  - oldrel
-  - release
-  - devel
 
 r_packages:
   - covr
 
 after_success:
   - Rscript -e 'covr::codecov()'
+
+jobs:
+  include:
+    - r: 3.2
+    - r: oldrel
+    - r: release
+    - r: devel
+    - os: osx
+
+matrix:
+  fast_finish: true

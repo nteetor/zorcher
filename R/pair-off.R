@@ -15,6 +15,16 @@ pair_off <- function(names, values, env) {
   }
 
   #
+  # when using the named notation values may need to be shuffled around
+  #
+  if (any(has_named(names))) {
+    # values <- pad_named(names, values)
+    names <- shuffle_named(names)
+
+    return(pair_off(names, values))
+  }
+
+  #
   # mismatch between variables and values
   #
   if (length(names) != length(values)) {

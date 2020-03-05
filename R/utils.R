@@ -54,6 +54,70 @@ add_defaults <- function(names, values, env) {
 }
 
 #
+# variables on the lhs may rename a rhs value,
+# c(x: y) %<-% ..
+# In this case, x renames y
+# The named value "y" of the rhs is assigned to x
+#
+get_named <- function(x) {
+  attr(x, "named", exact = TRUE)
+}
+
+has_named <- function(x) {
+  vapply(x, function(i) !is.null(get_named(i)), logical(1))
+}
+
+pad_named <- function(names, values) {
+  is_named <- has_named(names)
+
+  named_names <- vapply(names[is_named], get_named, character(1))
+  named_i <- names(values) %in% named_names
+
+  named_values <- values[named_i]
+  asis_values <- values[!named_i]
+
+  values <- vector("list", length(values))
+
+
+
+  for_rename <- vapply(names[is_named], function(nm) {
+    as.character(get_named(nm))
+  }, character(1))
+
+  indeces_rename <- names(values) %in% for_rename
+
+  named_values <- values[indeces_rename]
+  asis_values <- values[!indeces_rename]
+
+  names2 <- vector("numeric", length(names))
+  names2[indeces_rename] <- seq_along(named_values)
+  names2[!indeces_rename] <- seq_along(asis_values)
+
+  lapply(seq_along(is_named), function(i) {
+    j <- names2[i]
+
+    if (is_named[i]) {
+      named_values[[j]]
+    } else {
+      asis_values[[j]]
+    }
+  })
+}
+
+shuffle_named <- function(x) {
+  is_named <- has_named(x)
+  seq_named <- seq_len(sum(is_named))
+
+  x2 <- vector("list", length(x))
+  x2[seq_named] <- lapply(
+    x[is_named], `attr<-`, which = "named", value = NULL
+  )
+  x2[-seq_named] <- x[!is_named]
+
+  x2
+}
+
+#
 # traverse nested extract op calls to find the extractee, e.g. `x[[1]][[1]]`
 #
 traverse_to_extractee <- function(call) {
@@ -96,7 +160,7 @@ is_valid_call <- function(x) {
     return(FALSE)
   }
 
-  (x == "c" || x == "=" || is_extract_op(x))
+  (x == "c" || x == "=" || x == ":" || is_extract_op(x))
 }
 
 #
@@ -186,6 +250,19 @@ variables <- function(x) {
     return(var)
   }
 
+  if (car(x) == ":") {
+    var <- as.character(car(cdr(x)))
+    named <- car(cdr(cdr(x)))
+
+    if (!is.name(named)) {
+      stop_invalid_lhs(expected_name())
+    }
+
+    attr(var, "named") <- as.character(named)
+
+    return(var)
+  }
+
   lapply(cdr(x), variables)
 }
 
@@ -211,6 +288,10 @@ unexpected_variable <- function(obj) {
 
 unexpected_call <- function(obj) {
   paste0("unexpected call `", as.character(obj), "`")
+}
+
+expected_name <- function() {
+  "expected symbol for named assignment"
 }
 
 # thank you Advanced R
